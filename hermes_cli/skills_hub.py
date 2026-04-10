@@ -151,7 +151,8 @@ def do_search(query: str, source: str = "all", limit: int = 10,
 
     auth = GitHubAuth()
     sources = create_source_router(auth)
-    results = unified_search(query, sources, source_filter=source, limit=limit)
+    with c.status("[bold]Searching registries..."):
+        results = unified_search(query, sources, source_filter=source, limit=limit)
 
     if not results:
         c.print("[dim]No skills found matching your query.[/]\n")
@@ -187,7 +188,7 @@ def do_browse(page: int = 1, page_size: int = 20, source: str = "all",
     Official skills are always shown first, regardless of source filter.
     """
     from tools.skills_hub import (
-        GitHubAuth, create_source_router,
+        GitHubAuth, create_source_router, parallel_search_sources,
     )
 
     # Clamp page_size to safe range
@@ -198,27 +199,20 @@ def do_browse(page: int = 1, page_size: int = 20, source: str = "all",
     auth = GitHubAuth()
     sources = create_source_router(auth)
 
-    # Collect results from all (or filtered) sources
-    # Use empty query to get everything; per-source limits prevent overload
+    # Collect results from all (or filtered) sources in parallel.
+    # Per-source limits prevent overload; 30s overall timeout prevents hangs.
     _TRUST_RANK = {"builtin": 3, "trusted": 2, "community": 1}
     _PER_SOURCE_LIMIT = {"official": 100, "skills-sh": 100, "well-known": 25, "github": 100, "clawhub": 50,
                          "claude-marketplace": 50, "lobehub": 50}
 
-    all_results: list = []
-    source_counts: dict = {}
-
-    for src in sources:
-        sid = src.source_id()
-        if source != "all" and sid != source and sid != "official":
-            # Always include official source for the "first" placement
-            continue
-        try:
-            limit = _PER_SOURCE_LIMIT.get(sid, 50)
-            results = src.search("", limit=limit)
-            source_counts[sid] = len(results)
-            all_results.extend(results)
-        except Exception:
-            continue
+    with c.status("[bold]Fetching skills from registries..."):
+        all_results, source_counts = parallel_search_sources(
+            sources,
+            query="",
+            per_source_limits=_PER_SOURCE_LIMIT,
+            source_filter=source,
+            overall_timeout=30,
+        )
 
     if not all_results:
         c.print("[dim]No skills found in the Skills Hub.[/]\n")
