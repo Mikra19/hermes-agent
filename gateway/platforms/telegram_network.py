@@ -40,7 +40,10 @@ _DOH_PROVIDERS: list[dict] = [
 
 # Last-resort IPs when DoH is also blocked.  These are stable Telegram Bot API
 # endpoints in the 149.154.160.0/20 block (same seed used by OpenClaw).
-_SEED_FALLBACK_IPS: list[str] = ["149.154.167.220"]
+# Last-resort IPs when DoH is also blocked.  Ordered by latency from
+# Hermess-MacBook-Pro (Slovenia, April 2026): 149.154.166.111 is ~35% faster
+# than the old single fallback (149.154.167.220).
+_SEED_FALLBACK_IPS: list[str] = ["149.154.166.111", "149.154.167.216", "149.154.167.220"]
 
 
 def _resolve_proxy_url() -> str | None:

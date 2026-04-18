@@ -14,7 +14,7 @@ def get_hermes_home() -> Path:
     Reads HERMES_HOME env var, falls back to ~/.hermes.
     This is the single source of truth — all other copies should import this.
     """
-    val = os.environ.get("HERMES_HOME", "").strip()
+    val = os.path.expanduser(os.environ.get("HERMES_HOME", "")).strip()
     return Path(val) if val else Path.home() / ".hermes"
 
 
@@ -35,7 +35,7 @@ def get_default_hermes_root() -> Path:
     Import-safe — no dependencies beyond stdlib.
     """
     native_home = Path.home() / ".hermes"
-    env_home = os.environ.get("HERMES_HOME", "")
+    env_home = os.path.expanduser(os.environ.get("HERMES_HOME", ""))
     if not env_home:
         return native_home
     env_path = Path(env_home)
@@ -129,7 +129,7 @@ def get_subprocess_home() -> str | None:
     Activation is directory-based: if the ``home/`` subdirectory doesn't
     exist, returns ``None`` and behavior is unchanged.
     """
-    hermes_home = os.getenv("HERMES_HOME")
+    hermes_home = os.path.expanduser(os.getenv("HERMES_HOME", ""))
     if not hermes_home:
         return None
     profile_home = os.path.join(hermes_home, "home")
